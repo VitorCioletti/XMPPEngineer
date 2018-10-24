@@ -429,7 +429,6 @@ namespace XMPPEngineer.Core
 		{
 			if (String.IsNullOrWhiteSpace(server))
 			{
-
 				Hostname = hostname;
 				Server = hostname;
 				Port = port;
