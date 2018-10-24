@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using XMPPEngineer;
 using XMPPEngineer.Client;
 using XMPPEngineer.Im;
@@ -9,66 +10,71 @@ namespace XMPPEngineerTest
     {
         public static void Main(string[] args)
         {
-            // basic
-            /*
-            using (XmppClient client = new XmppClient("domain", "user", "password"))
+            const string _server = "crio";
+            const string _hostname = "crio";
+            const string _usuario = "sistema";
+            const string _senha = "churros";
+
+            Action<string> imprime = s => Console.WriteLine($"{DateTime.Now} {s}");
+
+            imprime("Criando cliente...");
+
+            var client = new XmppClient(
+                _hostname,
+                _usuario,
+                _senha,
+                _server,
+                validate: (sender, certificate, chain, sslPolicyErrors) => true
+            );
+
+            imprime("Conectando...");
+
+            client.Connect();
+
+            imprime("Conectado");
+
+            Jid telema = $"usuario@{_hostname}";
+
+            client.SendMessage(telema, body: "Teste de abertura do chat", type: MessageType.Chat);
+
+            Jid troll = $"nikolas@{_hostname}";
+            client.SendMessage(troll, body: "<attention xmlns=\"urn: xmpp:attention: 0\"/><buzz xmlns = \"http://www.jivesoftware.com/spark\" /><attention xmlns =\"urn:xmpp:attention:0\"/><buzz xmlns = \"http://www.jivesoftware.com/spark\" />", type: MessageType.Chat);
+
+
+            Action<MessageEventArgs, string> responde = (e, s) =>
             {
-                client.Connect();
+                client.SendMessage(e.Message.From, s, type: MessageType.Chat);
+                imprime($"Respondido \"{s}\"");
+            };
 
-                Message message = new Message(new Jid("user@domain"), "Hello, World.");
-                client.SendMessage(message);
-            }*/
+            client.Message += (sender, e) =>
+            {
+                if (e.Message.Type == MessageType.Error)
+                    throw new Exception($"FUDEU. Motivo: {e.Message}");
 
-            // with stream management
-            using (XmppClient clientsm = new XmppClient(
-                "alchemy.local",
-                "admin",
-                "PASSWORD",
-                "alchemy.local",
-                XmppClient.AvailableExtensions.Default | XmppClient.AvailableExtensions.Ping))
-			//XmppClient.AvailableExtensions.DataForms
-			//XmppClient.AvailableExtensions.MessageCarbons
-			/*using (XMPPEngineer.Core.XmppCore clientsm = new XMPPEngineer.Core.XmppCore(
-                "alchemy.local",
-                "steven",
-                "test",
-                "dev-lite-citym-access.westeurope.cloudapp.azure.com"))*/
-			{
-                clientsm.Error += (sender, e) =>
+                var sair = e.Message.Body.Trim().ToLower() == "sair";
+
+                imprime($"Recebido \"{e.Message.Body}\"");
+
+                if (e.Message.Body.Trim().ToLower() == "ping")
+                    responde(e, "pong");
+
+                if (e.Message.Body.Trim().ToLower() == "pong")
+                    responde(e, "ping");
+
+                if (sair)
                 {
-                    Console.WriteLine(e.ToString());
-                };
-                clientsm.Message += (sender, e) =>
-                {
-                    Console.WriteLine(e.Message);
-                };
+                    responde(e, "Nunca!");
+                    //Environment.Exit(0);
+                }
+            };
 
-                clientsm.RetrieveRoster = false;
-                clientsm.Connect("mobile");
+            client.Error += (sender, e) =>
+            {
+                Console.Write($"Erro: {e.Exception}");
+            };
 
-                clientsm.StreamManagementEnabled += (sdr, evt) =>
-                {
-                    // normal send
-                    Message messagesm = new Message(new Jid("admin@alchemy.local"), "ok - " + DateTime.Now.ToLongTimeString());
-                    clientsm.SendMessage(messagesm);
-
-                    // xep-0033 - multicast can send to a jid that can then route to multiple users
-                    /*
-                    System.Collections.Generic.List<Jid> jids = new System.Collections.Generic.List<Jid>();
-                    jids.Add(new Jid("admin@alchemy.local"));
-                    jids.Add(new Jid("test@alchemy.local"));
-                    jids.Add(new Jid("steven@alchemy.local"));
-
-                    Message multimessagesm = new Message(new Jid("multicast.alchemy.local"), "ok5 - " + DateTime.Now.ToLongTimeString(), null, jids);
-                    clientsm.SendMessage(multimessagesm);
-                    */
-                };
-
-                // enable stream management and recovery mode - // xep-0198
-                clientsm.EnableStreamManagement(true);
-
-                Console.ReadKey();
-            }
-		}
+            Thread.Sleep(-1);
+        }
     }
 }
